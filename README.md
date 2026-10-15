@@ -19,40 +19,74 @@ Most "Chat with PDF" tools are single-user demos. KnowFlow AI gives each user a 
 
 ---
 
-## Architecture
-User
- │
- ▼
-React + Vite
- │
- ▼ HTTPS + JWT
-FastAPI Backend
- │
- ├── Authentication
- ├── Chat Service
- ├── Document Service
- │
- ▼
-Router Agent
- │
- ├── local ─────► pgvector
- │
- ├── web ───────► LangSearch
- │
- └── both ──────► Merge Context
-                 │
-                 ▼
-          Answer Generator
-                 │
-                 ▼
-      Response + Sources
-                 │
-                 ▼
-      Supabase PostgreSQL
-      ├── Users
-      ├── Documents
-      ├── Chats
-      └── Embeddings
+
+## Architecture Flow
+
+### 1. User Authentication
+- User logs in using **Supabase Auth**.
+- Backend verifies the **JWT token** before processing any request.
+- Every request is associated with the authenticated user.
+
+⬇️
+
+### 2. Document Upload
+- User uploads one or more PDF documents.
+- FastAPI extracts the text from each PDF.
+- Text is split into overlapping chunks.
+- Each chunk is converted into a vector embedding using **Jina AI Embeddings**.
+- Chunks and embeddings are stored in **Supabase PostgreSQL + pgvector**.
+
+⬇️
+
+### 3. User Sends a Question
+- User asks a question from the chat interface.
+- Backend loads recent chat history for context.
+
+⬇️
+
+### 4. Query Routing
+- A **Router Agent (LLM)** classifies the query as:
+  - **Local** → Answer using uploaded documents.
+  - **Web** → Use live web search.
+  - **Both** → Combine document retrieval and web search.
+
+⬇️
+
+### 5. Local Retrieval (if needed)
+- Backend searches **pgvector** using cosine similarity.
+- Only chunks above the similarity threshold are retrieved.
+- Weak matches are discarded.
+
+⬇️
+
+### 6. Web Search (if needed)
+- Relevant information is fetched using **LangSearch API**.
+- Used when the query requires external knowledge or local retrieval is insufficient.
+
+⬇️
+
+### 7. Response Generation
+- Retrieved document chunks.
+- Web search results (if any).
+- Recent conversation history.
+
+These are combined and sent to the **Groq LLM** to generate a grounded response.
+
+⬇️
+
+### 8. Save Conversation
+- User message and assistant response are stored in PostgreSQL.
+- Route information (`local`, `web`, or `both`) and source references are also saved.
+
+⬇️
+
+### 9. Return Response
+The frontend displays:
+- AI response
+- Source references
+- Route badge (Local / Web / Both)
+- Updated conversation history
+
 
 **Query Flow:**
 
