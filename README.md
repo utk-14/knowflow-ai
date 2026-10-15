@@ -20,65 +20,39 @@ Most "Chat with PDF" tools are single-user demos. KnowFlow AI gives each user a 
 ---
 
 ## Architecture
-                                   KnowFlow AI Architecture
-
-+----------------------------------------------------------------------------------+
-|                                  React + Vite                                    |
-|                          Tailwind CSS • Hosted on Vercel                         |
-+----------------------------------------------------------------------------------+
-                                      |
-                                      | HTTPS + JWT
-                                      v
-+----------------------------------------------------------------------------------+
-|                              FastAPI Backend (Render)                            |
-|                                                                                  |
-|  +----------------+   +----------------+   +----------------------------------+ |
-|  | Authentication |   | Chat Service   |   |      Document Service            | |
-|  | JWT Validation |   | Save/Retrieve  |   | Upload • Parse • Chunk • Embed   | |
-|  +----------------+   +----------------+   +----------------------------------+ |
-|                                                                                  |
-|                     +-------------------------------------------+                |
-|                     |          Router Agent (LLM)               |                |
-|                     |   Classifies Query → local / web / both   |                |
-|                     +----------------------+--------------------+                |
-|                                            |                                     |
-|                         +------------------+------------------+                  |
-|                         |                                     |                  |
-|                         v                                     v                  |
-|              +------------------------+            +------------------------+    |
-|              |   Local RAG Pipeline    |            |    Web Search Tool     |    |
-|              |  pgvector Similarity    |            |      LangSearch        |    |
-|              +-----------+-------------+            +-----------+------------+    |
-|                          |                                      |                 |
-|                          +------------------+-------------------+                 |
-|                                             |                                     |
-|                                             v                                     |
-|                            +-------------------------------+                      |
-|                            |      Answer Generator (LLM)   |                      |
-|                            | Uses Context + Chat History   |                      |
-|                            +---------------+---------------+                      |
-|                                            |                                      |
-|                                            v                                      |
-|                            Response + Sources + Route Badge                       |
-+--------------------------------------------+-------------------------------------+
-                                             |
-                                             v
-+----------------------------------------------------------------------------------+
-|                                Supabase (PostgreSQL)                             |
-|                                                                                  |
-|  • Authentication (JWT)                                                          |
-|  • Users                                                                         |
-|  • Chats & Messages                                                              |
-|  • Documents                                                                     |
-|  • Embeddings (pgvector + ivfflat cosine index)                                  |
-|  • Row Level Security (User Isolation)                                           |
-+----------------------------------------------------------------------------------+
-
-                        External AI Services
-                        --------------------
-                        • Groq → Router + Answer Generation
-                        • Jina AI → Embedding Generation
-                        • LangSearch → Live Web Search
+User
+ │
+ ▼
+React + Vite
+ │
+ ▼ HTTPS + JWT
+FastAPI Backend
+ │
+ ├── Authentication
+ ├── Chat Service
+ ├── Document Service
+ │
+ ▼
+Router Agent
+ │
+ ├── local ─────► pgvector
+ │
+ ├── web ───────► LangSearch
+ │
+ └── both ──────► Merge Context
+                 │
+                 ▼
+          Answer Generator
+                 │
+                 ▼
+      Response + Sources
+                 │
+                 ▼
+      Supabase PostgreSQL
+      ├── Users
+      ├── Documents
+      ├── Chats
+      └── Embeddings
 
 **Query Flow:**
 
